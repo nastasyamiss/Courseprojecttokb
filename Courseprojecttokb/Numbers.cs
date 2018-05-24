@@ -6,7 +6,9 @@ using System.Threading.Tasks;
 
 namespace Courseprojecttokb
 {
-    class UsedColors
+    class Numbers
     {
+        public string Number { get; set; }
+        public string HEXFormat { get; set; }
     }
 }

